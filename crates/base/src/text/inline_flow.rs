@@ -1262,7 +1262,18 @@ fn push_text_wrap_fragments<'a>(
     let font_size = text_style.font_size.to_pixels(window.rem_size());
     let mut cursor = range.start;
     for (highlight_range, highlight) in highlights {
-        if highlight.font_family.is_none() {
+        // A span is measured as an element whenever it is shaped differently
+        // from the body text — not only when it changes family.
+        //
+        // The line wrapper measures a plain text fragment in the body font at
+        // the body weight. Bold carries no family of its own, so it used to
+        // fall through to the wrapper and be measured un-bolded, while the
+        // layout shaped it bold and wider: a line with bold in it and a code
+        // span near the edge came out past the wrap width and was clipped.
+        let reshapes = highlight.font_family.is_some()
+            || highlight.style.font_weight.is_some()
+            || highlight.style.font_style.is_some();
+        if !reshapes {
             continue;
         }
         let start = highlight_range.start.max(cursor);
